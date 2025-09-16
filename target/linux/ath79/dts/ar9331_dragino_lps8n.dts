@@ -90,6 +90,15 @@
         scl-gpios = <&gpio 8 GPIO_ACTIVE_HIGH>;
         i2c-gpio,delay-us = <5>;
     };
+
+    /* Assume VBUS always present */
+    reg_usb_vbus: regulator-usb-vbus {
+        compatible = "regulator-fixed";
+        regulator-name = "usb_vbus";
+        regulator-min-microvolt = <5000000>;
+        regulator-max-microvolt = <5000000>;
+        regulator-always-on;
+    };
 };
 
 &ref {
@@ -99,15 +108,14 @@
 /* Remove gpio-hog on reset pin; concentratord will control it via UCI */
 
 &usb {
-    phys = <&usb_phy>;
-    phy-names = "usb-phy";
     dr_mode = "host";
+    vbus-supply = <&reg_usb_vbus>;
     status = "okay";
 };
 
 &usb_phy {
-    compatible = "qca,ar7200-usb-phy";
-    reset-names = "usb-phy", "usb-suspend-override";
+    /* Some kernels expect the first reset name to be "phy" instead of "usb-phy" */
+    reset-names = "phy", "usb-suspend-override";
     resets = <&rst 4>, <&rst 3>;
     status = "okay";
 };
