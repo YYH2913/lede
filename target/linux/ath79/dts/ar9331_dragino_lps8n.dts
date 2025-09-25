@@ -10,6 +10,9 @@
     model = "Dragino LPS8N";
     compatible = "dragino,lps8n", "qca,ar9331";
 
+    pinctrl-names = "default";
+    pinctrl-0 = <&jtag_disable_pins &switch_led_disable_pins>;
+
     aliases {
         label-mac-device = &wmac;
         spi1 = &spidev_gpio;
@@ -99,6 +102,25 @@
         regulator-max-microvolt = <5000000>;
         regulator-always-on;
     };
+
+    /* 4G module 3.3V enable: GPIO15 is inverted by BSS138.
+     * Low level on GPIO15 turns power ON. Keep it ON at boot. */
+    reg_4g_3v3: regulator-4g-3v3 {
+        compatible = "regulator-fixed";
+        regulator-name = "4g_3v3";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        regulator-always-on;
+    };
+};
+
+&gpio {
+    enable_4g_3v3 {
+        gpio-hog;
+        gpios = <15 GPIO_ACTIVE_LOW>;
+        output-high; /* active-low => drive low to enable */
+        line-name = "enable_4g_3v3";
+    };
 };
 
 &ref {
@@ -108,6 +130,8 @@
 /* Remove gpio-hog on reset pin; concentratord will control it via UCI */
 
 &usb {
+    phys = <&usb_phy>;
+    phy-names = "usb-phy";
     dr_mode = "host";
     vbus-supply = <&reg_usb_vbus>;
     status = "okay";
@@ -115,7 +139,7 @@
 
 &usb_phy {
     /* Some kernels expect the first reset name to be "phy" instead of "usb-phy" */
-    reset-names = "phy", "usb-suspend-override";
+    reset-names = "phy", "suspend-override";
     resets = <&rst 4>, <&rst 3>;
     status = "okay";
 };
@@ -207,5 +231,4 @@
     nvmem-cells = <&macaddr_art_6>, <&cal_art_1000>;
     nvmem-cell-names = "mac-address", "calibration";
 };
-
 

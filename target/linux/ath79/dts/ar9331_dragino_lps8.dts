@@ -102,6 +102,9 @@
 };
 
 &usb_phy {
+    /* Some kernels expect the first reset name to be "phy" instead of "usb-phy" */
+    reset-names = "phy", "suspend-override";
+    resets = <&rst 4>, <&rst 3>;
     status = "okay";
 };
 
@@ -192,5 +195,4 @@
     nvmem-cells = <&macaddr_art_6>, <&cal_art_1000>;
     nvmem-cell-names = "mac-address", "calibration";
 };
-
 
