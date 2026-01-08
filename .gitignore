@@ -30,3 +30,5 @@ git-src
 .cproject
 .ccache
 .vscode*
+/dragino_conf/image
+/dragino_conf/*.bin

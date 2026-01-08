@@ -1,0 +1,34 @@
+#!/bin/sh
+
+ssid_prefix=$(uci get system.vendor.ssid_prefix)
+SSID="$ssid_prefix-$(hexdump -v -e '1/1 "%.2x"' -s $((0x1005)) -n 3 /dev/mtd6)"
+
+hostname_prefix=$(uci get system.vendor.name)
+company_domain=$(uci get system.vendor.mail_domain)
+DHCP_DOMAIN="$hostname_prefix-net"
+hostname="$hostname_prefix-$(hexdump -v -e '1/1 "%.2x"' -s $((0x1005)) -n 3 /dev/mtd6)"
+add_middle=$(hexdump -v -e '11/1 "%_p"' -s $((0x908)) -n 11 /dev/mtd6 | grep -c -E "los8|ig16|ps8n|308n|308l|ps8g|os8l|ps8l")
+awsgwid="a84041fffe"$(xxd -ps -l 3 -s 0x0009 /dev/mtd6)
+if [ $add_middle == "1" ]; then 
+	GWID="a84041ffff"$(xxd -ps -l 3 -s 0x1005 /dev/mtd6)
+else
+	GWID=$(xxd -ps -l 8 -s 0x1002 /dev/mtd6)
+fi
+
+uci -q batch <<-EOF
+    set wireless.ap_0.ssid=$SSID
+    set dhcp.setup.domain=$DHCP_DOMAIN
+    set network.wan.hostname="$hostname"
+    set system.@system[0].hostname="$hostname"
+    set gateway.general.email="$hostname@$company_domain"
+    set gateway.general.GWID=$GWID
+    set gateway.general.awsgwid=$awsgwid
+	set rssh.rssh.rssh_id=$GWID
+    commit
+EOF
+
+sed "s/cid ' '/cid '$hostname'/g" /etc/config/mqtt -i
+[ -f /usr/lib/opkg/info/haserl-ui.prerm ] && echo "#!/bin/sh" > /usr/lib/opkg/info/haserl-ui.prerm
+[ -f /usr/lib/opkg/info/dragino_gw_fwd.prerm ] && echo "#!/bin/sh" > /usr/lib/opkg/info/dragino_gw_fwd.prerm
+
+exit 0

@@ -1,0 +1,42 @@
+#!/bin/sh /etc/rc.common
+START=99
+
+start()
+{	
+    logger "Adding FallBack IP"
+    logger "Checking bridge mode or not"
+    IS_BRIDGE=`uci get network.lan.type`
+	
+	# Check only WAN port model: lps8/los8
+	IS_SINGLE_WAN=$(hexdump -v -e '11/1 "%_p"' -s $((0x908)) -n 11 /dev/mtd6 |grep -E 'lps8|los8|ig16|ps8n|ps8g|os8n|os8l|ps8l' -c)
+
+	if [ "$IS_SINGLE_WAN" = "1" ];then
+		logger "Set up WAN port for fall back ip"
+		ifconfig eth1:9 172.31.255.254 netmask 255.255.255.252
+    	else 
+		if [ "$IS_BRIDGE" = "bridge" ];then
+			logger "Device is in bridging mode."
+			ifconfig br-lan:9 172.31.255.254 netmask 255.255.255.252
+		else 
+			logger "Device is not in bridging mode."
+			ifconfig eth0:9 172.31.255.254 netmask 255.255.255.252
+    		fi
+	fi
+
+	ps | grep "iot_keep_alive" | grep -v grep | awk '{print $1}' | xargs kill -s 9
+    /usr/bin/iot_keep_alive.sh &>/dev/null  &
+
+	# Make sure wifi is started 
+	wifi
+
+	if [ -f /usr/bin/wg ]; then
+		if [ ! -f /etc/wireguard/wgclient.pub ]; then
+			wg genkey | tee /etc/wireguard/wgclient.key | wg pubkey > /etc/wireguard/wgclient.pub
+		fi
+	fi
+
+	[ -f /usr/lib/opkg/info/dragino_gw_fwd.prerm ] && echo "#!/bin/sh" > /usr/lib/opkg/info/dragino_gw_fwd.prerm
+	[ -f /usr/lib/opkg/info/haserl-ui.prerm ] && echo "#!/bin/sh" > /usr/lib/opkg/info/haserl-ui.prerm
+
+	exit
+}

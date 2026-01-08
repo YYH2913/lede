@@ -1,0 +1,46 @@
+#!/bin/sh
+
+logger "network reset button released"
+
+if [ ! -f /tmp/wifi.reset ]
+then
+	logger "no previous /tmp/wifi.reset file found. exiting"
+	exit 0
+fi
+
+released_at=`date +%s`
+pressed_at=`cat /tmp/wifi.reset`
+
+pressed_for=`expr $released_at - $pressed_at`
+
+logger "network reset button pressed for $pressed_for"
+
+if [ $pressed_for -gt 28 ]
+then
+	logger "resetting to factory"
+	sleep 2
+	mtd erase rootfs_data && reboot
+	exit 0
+fi
+ 
+if [ $pressed_for -gt 3 ]
+then
+	logger "resetting network"
+	sleep 2
+	cp /rom/etc/config/network /etc/config/
+	cp /rom/etc/config/dhcp /etc/config/
+	cp /rom/etc/config/wireless /etc/config/
+	cp /rom/etc/config/firewall /etc/config/
+	
+	ssid_prefix=$(uci get system.vendor.ssid_prefix)
+	SSID="$ssid_prefix-$(hexdump -v -e '1/1 "%.2x"' -s $((0x1005)) -n 3 /dev/mtd6)"
+	uci set wireless.ap_0.ssid=$SSID
+	uci commit wireless
+	
+	(sleep 1; /etc/init.d/network restart) &
+	(sleep 10; /etc/init.d/fallbackip start) &
+	
+	exit 0
+fi
+
+blink-stop

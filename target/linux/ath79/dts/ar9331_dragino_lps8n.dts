@@ -11,7 +11,7 @@
     compatible = "dragino,lps8n", "qca,ar9331";
 
     pinctrl-names = "default";
-    pinctrl-0 = <&jtag_disable_pins &switch_led_disable_pins>;
+    pinctrl-0 = <&jtag_disable_pins &switch_led_disable_pins &gpio21_gpio_pins>;
 
     aliases {
         label-mac-device = &wmac;
@@ -89,8 +89,8 @@
         #size-cells = <0>;
         status = "okay";
 
-        sda-gpios = <&gpio 7 GPIO_ACTIVE_HIGH>;
-        scl-gpios = <&gpio 8 GPIO_ACTIVE_HIGH>;
+        sda-gpios = <&gpio 7 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+        scl-gpios = <&gpio 8 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
         i2c-gpio,delay-us = <5>;
     };
 
@@ -114,6 +114,13 @@
     };
 };
 
+&pinmux {
+    /* Disable ETH_SWITCH_LED2 function on GPIO21, allow GPIO mode for user control */
+    gpio21_gpio_pins: pinmux_gpio21_gpio_pins {
+        pinctrl-single,bits = <0x4 0x0 0x200000>; /* offset 4, clear bit 21 */
+    };
+};
+
 &gpio {
     enable_4g_3v3 {
         gpio-hog;
@@ -130,18 +137,18 @@
 /* Remove gpio-hog on reset pin; concentratord will control it via UCI */
 
 &usb {
-    phys = <&usb_phy>;
-    phy-names = "usb-phy";
+    status = "okay";
+
     dr_mode = "host";
     vbus-supply = <&reg_usb_vbus>;
-    status = "okay";
 };
 
 &usb_phy {
-    /* Some kernels expect the first reset name to be "phy" instead of "usb-phy" */
-    reset-names = "phy", "suspend-override";
-    resets = <&rst 4>, <&rst 3>;
     status = "okay";
+
+    /* ar7200-usb-phy driver expects "phy" and "suspend-override",
+     * but ar9330.dtsi defines "usb-phy" and "usb-suspend-override" */
+    reset-names = "phy", "suspend-override";
 };
 
 &spi {
@@ -205,6 +212,7 @@
     status = "okay";
 };
 
+/* WAN port */
 &eth0 {
     status = "okay";
 
@@ -213,15 +221,15 @@
 
     gmac-config {
         device = <&gmac>;
-        switch-phy-addr-swap = <1>;
         switch-phy-swap = <1>;
     };
 };
 
+/* LAN port */
 &eth1 {
     status = "okay";
 
-    nvmem-cells = <&macaddr_art_6>;
+    nvmem-cells = <&macaddr_art_0>;
     nvmem-cell-names = "mac-address";
 };
 
@@ -231,4 +239,3 @@
     nvmem-cells = <&macaddr_art_6>, <&cal_art_1000>;
     nvmem-cell-names = "mac-address", "calibration";
 };
-

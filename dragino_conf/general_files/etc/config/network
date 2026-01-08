@@ -1,0 +1,27 @@
+config interface 'loopback'
+	option ifname 'lo'
+	option proto 'static'
+	option ipaddr '127.0.0.1'
+	option netmask '255.0.0.0'
+
+config interface 'lan'
+	option type 'bridge'
+	option proto 'static'
+	option dns '8.8.8.8'
+	option netmask '255.255.255.0'
+	option ipaddr '10.130.1.1'
+	#option gateway '255.255.255.255'
+
+config interface 'wan'
+	option proto 'dhcp'
+	option ifname 'eth0'
+
+config interface 'wwan'
+	option proto 'dhcp'
+
+config interface 'cellular'
+	option proto 'qmi'
+	option device '/dev/cdc-wdm0'
+	option apn ''
+	option auto '0'
+    option backup '1'
